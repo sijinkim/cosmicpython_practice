@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from cosmicpython.model import Batch, OrderLine, allocate
+from cosmicpython.model import Batch, OrderLine, OutOfStock, allocate
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def later():
     return date.today() + timedelta(days=3)
 
 
-def test_prefers_current_stock_batches_to_shipments(tomorrow):
+def test_prefers_current_stock_batches_to_shipments(tomorrow: date):
     in_stock_batch = Batch("in-stock-batch", "RETRO-CLOCK", 100, eta=None)
     shipment_batch = Batch("shipment-batch", "RETRO-CLOCK", 100, eta=tomorrow)
     line = OrderLine("oref", "RETRO-CLOCK", 10)
@@ -31,7 +31,7 @@ def test_prefers_current_stock_batches_to_shipments(tomorrow):
     assert shipment_batch.available_quantity == 100
 
 
-def test_prefers_earlier_batches(today, tomorrow, later):
+def test_prefers_earlier_batches(today: date, tomorrow: date, later: date):
     earliest = Batch("speedy-batch", "MINIMALIST-SPOON", 100, eta=today)
     medium = Batch("normal-batch", "MINIMALIST-SPOON", 100, eta=tomorrow)
     latest = Batch("slow-batch", "MINIMALIST-SPOON", 100, eta=later)
@@ -44,9 +44,17 @@ def test_prefers_earlier_batches(today, tomorrow, later):
     assert latest.available_quantity == 100
 
 
-def test_returns_allocated_batch_ref(tomorrow):
+def test_returns_allocated_batch_ref(tomorrow: date):
     in_stock_batch = Batch("in-stock-batch-ref", "HIGHBROW-POSTER", 100, eta=None)
     shipment_batch = Batch("shipment-batch-ref", "HIGHBROW-POSTER", 100, eta=tomorrow)
     line = OrderLine("oref", "HIGHBROW-POSTER", 10)
     allocation = allocate(line, [in_stock_batch, shipment_batch])
     assert allocation == in_stock_batch.reference
+
+
+def test_raise_out_of_stock_exception_if_cannot_allocate():
+    batch = Batch("batch1", "SMALL-FORK", 10, eta=today)
+    allocate(OrderLine("order1", "SMALL-FORK", 10), [batch])
+
+    with pytest.raises(OutOfStock, match="SMALL-FORK"):
+        allocate(OrderLine("order2", "SMALL-FORK", 1), [batch])
