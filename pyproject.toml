@@ -76,3 +76,6 @@ disable = ["R0903"]
   [tool.poe.tasks.check]
   help     = "Run all checks on the code base"
   sequence = ["style", "types", "lint", "test"]
+
+[tool.isort]
+profile="black"
